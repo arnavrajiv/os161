@@ -165,9 +165,9 @@ sys_waitpid(pid_t pid,
       break;
     }
   }
-  if(!flag) {
+  if(flag == 0) {
     *retval = -1;
-    return(ESRCH);
+    return ESRCH;
   }
 
   spinlock_acquire(&temp_child->p_lock);
@@ -177,9 +177,11 @@ sys_waitpid(pid_t pid,
     spinlock_acquire(&temp_child->p_lock);
   }
   spinlock_release(&temp_child->p_lock);
-  
-  exitstatus = _MKWAIT_EXIT(temp_child->p_exitcode);
+
+  exitstatus = temp_child->p_exitcode;
   proc_destroy(temp_child);
+  exitstatus = _MKWAIT_EXIT(exitstatus);
+  
 #else
   exitstatus = 0;
 #endif
