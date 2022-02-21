@@ -62,6 +62,12 @@ struct proc {
 
 	/* VFS */
 	struct vnode *p_cwd;		/* current working directory */
+	#if OPT_A1
+		struct array *p_children;
+		struct proc *p_parent;
+		int p_exitcode;
+		int p_exitstatus;
+	#endif
 
 #ifdef UW
   /* a vnode to refer to the console device */
