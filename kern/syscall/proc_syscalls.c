@@ -91,14 +91,11 @@ sys_getpid(pid_t *retval)
   /* for now, this is just a stub that always returns a PID of 1 */
   /* you need to fix this to make it work properly */
   #if OPT_A1
-    pid_count = PID_MIN;
-    pid_count_mutex = sem_create("pid_count_mutex", 1);
+    *retval = curproc->p_pid;
   #else
     *retval = 1;
-    return(0);
-	#endif
-  
-  
+  #endif
+  return(0);
 }
 
 /* stub handler for waitpid() system call                */
