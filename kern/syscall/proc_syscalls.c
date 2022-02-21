@@ -168,6 +168,7 @@ sys_waitpid(pid_t pid,
     *retval = -1;
     return(ESRCH);
   }
+  
   spinlock_acquire(&temp_child->p_lock);
   while(temp_child->p_exitstatus != 0) {
     spinlock_release(&temp_child->p_lock);
