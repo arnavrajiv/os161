@@ -106,10 +106,10 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 #if OPT_A1
-	proc->p_children = array_create();
 	proc->p_parent = NULL;
 	proc->p_exitcode = 0;
 	proc->p_exitstatus = 1;
+	proc->p_children = array_create();
 #endif
 
 #ifdef UW
@@ -246,13 +246,6 @@ proc_create_runprogram(const char *name)
 {
 	struct proc *proc;
 	char *console_path;
-
-	#if OPT_A1
-		P(pid_count_mutex);
-		proc->p_pid = pid_count;
-		pid_count+=1;
-		V(pid_count_mutex);
-	#endif
 
 	proc = proc_create(name);
 	if (proc == NULL) {
