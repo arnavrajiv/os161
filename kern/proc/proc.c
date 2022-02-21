@@ -50,6 +50,7 @@
 #include <vfs.h>
 #include <synch.h>
 #include <kern/fcntl.h>  
+#include <limits.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
