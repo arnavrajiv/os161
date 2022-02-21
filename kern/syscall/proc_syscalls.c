@@ -99,6 +99,29 @@ sys_getpid(pid_t *retval)
   return(0);
 }
 
+#if OPT_A1
+  int
+  sys_fork(struct trapframe *tf, pid_t *retval) {
+    struct proc *childproc = proc_create_runprogram("child");
+
+    struct addrspace *childaddrspace;
+    int as_copy_result = as_copy(curproc_getas(), &(childaddrspace));
+    if (as_copy_result) {}
+    childproc->p_addrspace = childaddrspace;
+
+    struct trapframe *child_tf = kmalloc(sizeof(struct trapframe));
+    memcpy(child_tf, tf, sizeof(struct trapframe));
+
+    int thread_fork_result = thread_fork("child_thread", childproc, enter_forked_process, (void *)child_tf, 0);
+    if(thread_fork_result) {}
+
+    *retval = childproc->p_pid;
+
+    clocksleep(1);
+    return 0;
+  }
+#endif
+
 /* stub handler for waitpid() system call                */
 
 int

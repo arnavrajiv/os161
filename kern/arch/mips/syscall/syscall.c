@@ -105,10 +105,11 @@ syscall(struct trapframe *tf)
 		err = sys_reboot(tf->tf_a0);
 		break;
 
-	    case SYS___time:
-		err = sys___time((userptr_t)tf->tf_a0,
-				 (userptr_t)tf->tf_a1);
-		break;
+	    #if OPT_A1
+			case SYS_fork:
+				err = sys_fork(tf, (pid_t *)&retval);
+				break;
+		#endif
 #ifdef UW
 	case SYS_write:
 	  err = sys_write((int)tf->tf_a0,
@@ -177,19 +178,23 @@ syscall(struct trapframe *tf)
  *
  * Thus, you can trash it and do things another way if you prefer.
  */
-void
-enter_forked_process(struct trapframe *tf, unsigned long data2)
-{
-	#if OPT_A1
-		struct trapframe newtf = *tf;
-		newtf.tf_v0 = 0;
-		newtf.tf_epc += 4;
-		mips_usermode(&newtf);
-		(void)data2;
-	#else
+#if OPT_A1
+	void
+	enter_forked_process(void *tf, unsigned long data2)
+	{
+			struct trapframe tf_fork = *(struct trapframe *) tf;
+
+			tf_fork.tf_epc += 4;
+			tf_fork.tf_v0 = 0;
+
+			kfree(tf);
+			mips_usermode(&tf_fork);
+			if (data2) {}
+	}
+#else
+	void
+	enter_forked_process(struct trapframe *tf)
+	{
 		(void)tf;
-	#endif
-	
-	
-	
-}
+	}
+#endif

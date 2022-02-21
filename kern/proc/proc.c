@@ -68,8 +68,8 @@ static volatile unsigned int proc_count;
 /* it would be better to use a lock here, but we use a semaphore because locks are not implemented in the base kernel */ 
 static struct semaphore *proc_count_mutex;
 #if OPT_A1
-static volatile unsigned int pid_count;
-static struct semaphore *pid_count_mutex;
+	static volatile unsigned int pid_count;
+	static struct semaphore *pid_count_mutex;
 #endif
 /* used to signal the kernel menu thread when there are no processes */
 struct semaphore *no_proc_sem;   
@@ -214,10 +214,6 @@ proc_bootstrap(void)
 #ifdef UW
   proc_count = 0;
   proc_count_mutex = sem_create("proc_count_mutex",1);
-  #if OPT_A1
-	pid_count = PID_MIN;
-	pid_count_mutex = sem_create("pid_count_mutex", 1);
-  #endif
   if (proc_count_mutex == NULL) {
     panic("could not create proc_count_mutex semaphore\n");
   }
@@ -226,6 +222,14 @@ proc_bootstrap(void)
     panic("could not create no_proc_sem semaphore\n");
   }
 #endif // UW 
+
+#if OPT_A1
+	pid_count = PID_MIN;
+	pid_count_mutex = sem_create("pid_count_mutex",1);
+	if(pid_count_mutex == NULL) {
+		panic("could not create pid_count_mutex semaphore\n");
+	}
+#endif
 }
 
 /*
@@ -294,13 +298,15 @@ proc_create_runprogram(const char *name)
 	P(proc_count_mutex); 
 	proc_count++;
 	V(proc_count_mutex);
-	#if OPT_A1
-		P(pid_count_mutex);
-		pid_count++;
-		proc->p_pid = (pid_t)pid_count;
-		V(pid_count_mutex);
-	#endif
 #endif // UW
+
+#if OPT_A1
+	P(pid_count_mutex);
+	pid_count++;
+	proc->p_pid = (pid_t)pid_count;
+	V(pid_count_mutex);
+#endif
+
 
 	return proc;
 }
