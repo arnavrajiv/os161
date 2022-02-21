@@ -35,6 +35,7 @@
 #include <thread.h>
 #include <current.h>
 #include <syscall.h>
+#include <opt-A1.h>
 
 
 /*
@@ -177,7 +178,18 @@ syscall(struct trapframe *tf)
  * Thus, you can trash it and do things another way if you prefer.
  */
 void
-enter_forked_process(struct trapframe *tf)
+enter_forked_process(struct trapframe *tf, unsigned long data2)
 {
-	(void)tf;
+	#if OPT_A1
+		struct trapframe newtf = *tf;
+		newtf.tf_v0 = 0;
+		newtf.tf_epc += 4;
+		mips_usermode(&newtf);
+		(void)data2;
+	#else
+		(void)tf;
+	#endif
+	
+	
+	
 }

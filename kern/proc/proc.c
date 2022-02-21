@@ -103,6 +103,12 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
+#if OPT_A1
+	proc->p_children = array_create();
+	proc->p_parent = NULL;
+	proc->p_exitcode = 0;
+	proc->p_exitstatus = 1;
+#endif
 
 #ifdef UW
 	proc->console = NULL;
@@ -140,7 +146,9 @@ proc_destroy(struct proc *proc)
 		VOP_DECREF(proc->p_cwd);
 		proc->p_cwd = NULL;
 	}
-
+#if OPT_A1
+    array_destroy(proc->p_children);
+#endif
 
 #ifndef UW  // in the UW version, space destruction occurs in sys_exit, not here
 	if (proc->p_addrspace) {
@@ -205,6 +213,10 @@ proc_bootstrap(void)
 #ifdef UW
   proc_count = 0;
   proc_count_mutex = sem_create("proc_count_mutex",1);
+  #if OPT_A1
+	pid_count = PID_MIN;
+	pid_count_mutex = sem_create("pid_count_mutex", 1);
+  #endif
   if (proc_count_mutex == NULL) {
     panic("could not create proc_count_mutex semaphore\n");
   }
@@ -281,6 +293,12 @@ proc_create_runprogram(const char *name)
 	P(proc_count_mutex); 
 	proc_count++;
 	V(proc_count_mutex);
+	#if OPT_A1
+		P(pid_count_mutex);
+		pid_count++;
+		proc->p_pid = (pid_t)pid_count;
+		V(pid_count_mutex);
+	#endif
 #endif // UW
 
 	return proc;

@@ -36,6 +36,24 @@ void sys__exit(int exitcode) {
    */
   as = curproc_setas(NULL);
   as_destroy(as);
+#if OPT_A1
+  int i;
+  // int len = array_num(p->p_children);
+  for(i = array_num(p->p_children) - 1; i >= 0; i--) {
+    struct proc *temp_child = array_get(p->p_children, i);
+    array_remove(p->p_children, i);
+    spinlock_acquire(&temp_child->p_lock);
+    if(temp_child->p_exitstatus != 0) {
+      temp_child->p_parent = NULL;
+      spinlock_release(&temp_child->p_lock);
+    }
+    else {
+      spinlock_release(&temp_child->p_lock);
+      proc_destroy(temp_child);
+      
+    }
+  }
+#endif
 
   /* detach this thread from its process */
   /* note: curproc cannot be used after this call */
@@ -43,7 +61,22 @@ void sys__exit(int exitcode) {
 
   /* if this is the last user process in the system, proc_destroy()
      will wake up the kernel menu thread */
+#if OPT_A1
+  spinlock_acquire(&p->p_lock);
+  if(p->p_parent == NULL) {
+    spinlock_release(&p->p_lock);
+    proc_destroy(p);
+  }
+  else {
+    p->p_exitstatus = 0;
+    p->p_exitcode = exitcode;
+    spinlock_release(&p->p_lock);
+  }
+#else
+  (void)exitcode;
   proc_destroy(p);
+#endif
+
   
   thread_exit();
   /* thread_exit() does not return, so we should never get here */
@@ -91,8 +124,37 @@ sys_waitpid(pid_t pid,
   if (options != 0) {
     return(EINVAL);
   }
-  /* for now, just pretend the exitstatus is 0 */
+#if OPT_A1
+  int i;
+  int flag = 0;
+  struct proc *temp_child = NULL;
+  for(i = array_num(curproc->p_children) - 1; i >= 0; i--) {
+    struct proc *child = array_get(curproc->p_children, i);
+    if(pid == child->p_pid) {
+      temp_child = array_get(curproc->p_children, i);
+      flag = 1;
+      array_remove(curproc->p_children, i);
+      break;
+    }
+  }
+  if(!flag) {
+    *retval = -1;
+    return(ESRCH);
+  }
+  spinlock_acquire(&temp_child->p_lock);
+  while(temp_child->p_exitstatus != 0) {
+    spinlock_release(&temp_child->p_lock);
+    clocksleep(1);
+    spinlock_acquire(&temp_child->p_lock);
+  }
+  spinlock_release(&temp_child->p_lock);
+  exitstatus = _MKWAIT_EXIT(temp_child->p_exitcode);
+  proc_destroy(temp_child);
+#else
   exitstatus = 0;
+#endif
+  /* for now, just pretend the exitstatus is 0 */
+  
   result = copyout((void *)&exitstatus,status,sizeof(int));
   if (result) {
     return(result);
