@@ -62,9 +62,14 @@ struct proc *kproc;
 #ifdef UW
 /* count of the number of processes, excluding kproc */
 static volatile unsigned int proc_count;
+
 /* provides mutual exclusion for proc_count */
 /* it would be better to use a lock here, but we use a semaphore because locks are not implemented in the base kernel */ 
 static struct semaphore *proc_count_mutex;
+#if OPT_A1
+static volatile unsigned int pid_count;
+static struct semaphore *pid_count_mutex;
+#endif
 /* used to signal the kernel menu thread when there are no processes */
 struct semaphore *no_proc_sem;   
 #endif  // UW
@@ -221,6 +226,13 @@ proc_create_runprogram(const char *name)
 {
 	struct proc *proc;
 	char *console_path;
+
+	#if OPT_A1
+		P(pid_count_mutex);
+		proc->p_pid = pid_count;
+		pid_count+=1;
+		V(pid_count_mutex);
+	#endif
 
 	proc = proc_create(name);
 	if (proc == NULL) {

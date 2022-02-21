@@ -9,6 +9,8 @@
 #include <thread.h>
 #include <addrspace.h>
 #include <copyinout.h>
+#include <opt-A1.h>
+#include <limits.h>
 
   /* this implementation of sys__exit does not do anything with the exit code */
   /* this needs to be fixed to get exit() and waitpid() working properly */
@@ -55,13 +57,20 @@ sys_getpid(pid_t *retval)
 {
   /* for now, this is just a stub that always returns a PID of 1 */
   /* you need to fix this to make it work properly */
-  *retval = 1;
-  return(0);
+  #if OPT_A1
+    pid_count = PID_MIN;
+    pid_count_mutex = sem_create("pid_count_mutex", 1);
+  #else
+    *retval = 1;
+    return(0);
+	#endif
+  
+  
 }
 
 /* stub handler for waitpid() system call                */
 
-ont
+int
 sys_waitpid(pid_t pid,
 	    userptr_t status,
 	    int options,
@@ -91,4 +100,3 @@ sys_waitpid(pid_t pid,
   *retval = pid;
   return(0);
 }
-
