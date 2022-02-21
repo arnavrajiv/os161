@@ -148,6 +148,7 @@ proc_destroy(struct proc *proc)
 		VOP_DECREF(proc->p_cwd);
 		proc->p_cwd = NULL;
 	}
+
 #if OPT_A1
     array_destroy(proc->p_children);
 #endif
@@ -227,7 +228,8 @@ proc_bootstrap(void)
 #if OPT_A1
 	pid_count = PID_MIN;
 	pid_count_mutex = sem_create("pid_count_mutex",1);
-	if(pid_count_mutex == NULL) {
+	if(pid_count_mutex == NULL) 
+	{
 		panic("could not create pid_count_mutex semaphore\n");
 	}
 #endif

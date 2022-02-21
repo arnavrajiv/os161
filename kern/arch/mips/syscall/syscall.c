@@ -192,9 +192,5 @@ syscall(struct trapframe *tf)
 			if (data2) {}
 	}
 #else
-	void
-	enter_forked_process(struct trapframe *tf)
-	{
-		(void)tf;
-	}
+	(void)tf;
 #endif

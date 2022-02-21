@@ -10,7 +10,6 @@
 #include <addrspace.h>
 #include <copyinout.h>
 #include <opt-A1.h>
-#include <limits.h>
 #include <clock.h>
 #include <mips/trapframe.h>
 #include <kern/syscall.h>
@@ -39,20 +38,22 @@ void sys__exit(int exitcode) {
    */
   as = curproc_setas(NULL);
   as_destroy(as);
+
 #if OPT_A1
   int i;
-  // int len = array_num(p->p_children);
   for(i = array_num(p->p_children) - 1; i >= 0; i--) {
     struct proc *temp_child = array_get(p->p_children, i);
     array_remove(p->p_children, i);
     spinlock_acquire(&temp_child->p_lock);
-    if(temp_child->p_exitstatus != 0) {
+    if(temp_child->p_exitstatus == 0) 
+    {
+      spinlock_release(&temp_child->p_lock);
+      proc_destroy(temp_child);  
+    }
+    else 
+    {
       temp_child->p_parent = NULL;
       spinlock_release(&temp_child->p_lock);
-    }
-    else {
-      spinlock_release(&temp_child->p_lock);
-      proc_destroy(temp_child);
       
     }
   }
@@ -105,6 +106,9 @@ sys_getpid(pid_t *retval)
   int
   sys_fork(struct trapframe *tf, pid_t *retval) {
     struct proc *childproc = proc_create_runprogram("child");
+
+    childproc->p_parent = curproc;
+    array_add(curproc->p_children, childproc, NULL);
 
     struct addrspace *childaddrspace;
     int as_copy_result = as_copy(curproc_getas(), &(childaddrspace));
