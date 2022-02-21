@@ -151,6 +151,7 @@ sys_waitpid(pid_t pid,
   if (options != 0) {
     return(EINVAL);
   }
+
 #if OPT_A1
   int i;
   int flag = 0;
@@ -168,14 +169,15 @@ sys_waitpid(pid_t pid,
     *retval = -1;
     return(ESRCH);
   }
-  
+
   spinlock_acquire(&temp_child->p_lock);
-  while(temp_child->p_exitstatus != 0) {
+  while(temp_child->p_exitstatus) {
     spinlock_release(&temp_child->p_lock);
     clocksleep(1);
     spinlock_acquire(&temp_child->p_lock);
   }
   spinlock_release(&temp_child->p_lock);
+  
   exitstatus = _MKWAIT_EXIT(temp_child->p_exitcode);
   proc_destroy(temp_child);
 #else
