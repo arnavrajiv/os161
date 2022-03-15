@@ -165,6 +165,15 @@ lock_create(const char *name)
         
         // add stuff here as needed
         
+        lock->lk_wchan = wchan_create(lock->lk_name);
+        if (lock->lk_wchan == NULL) {
+                kfree(lock->lk_name);
+                kfree(lock);
+                return NULL;
+        }
+        spinlock_init(&lock->lk_spnlk);
+        lock->lk_owner = NULL;
+        lock->lk_held = false;
         return lock;
 }
 
@@ -175,6 +184,10 @@ lock_destroy(struct lock *lock)
 
         // add stuff here as needed
         
+        lock->lk_owner = NULL;
+        spinlock_cleanup(&lock->lk_spnlk);
+        wchan_destroy(lock->lk_wchan);
+
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -184,7 +197,23 @@ lock_acquire(struct lock *lock)
 {
         // Write this
 
-        (void)lock;  // suppress warning until code gets written
+        KASSERT(lock != NULL);
+        KASSERT(lock->lk_wchan != NULL);
+        KASSERT(curthread->t_in_interrupt == false);
+        spinlock_acquire(&lock->lk_spnlk);
+        
+        while(lock->lk_held) {
+                wchan_lock(lock->lk_wchan);
+                spinlock_release(&lock->lk_spnlk);
+                wchan_sleep(lock->lk_wchan);
+                spinlock_acquire(&lock->lk_spnlk);
+        }
+
+        lock->lk_held = true;
+        lock->lk_owner = curthread;
+        spinlock_release(&lock->lk_spnlk);
+
+        // (void)lock;  // suppress warning until code gets written
 }
 
 void
@@ -192,7 +221,19 @@ lock_release(struct lock *lock)
 {
         // Write this
 
-        (void)lock;  // suppress warning until code gets written
+        KASSERT(lock != NULL);
+        KASSERT(lock->lk_owner != NULL);
+        KASSERT(curthread->t_in_interrupt == false);
+        
+        spinlock_acquire(&lock->lk_spnlk);
+        
+        lock->lk_held = false;
+        lock->lk_owner = NULL;
+        
+        wchan_wakeone(lock->lk_wchan);
+        spinlock_release(&lock->lk_spnlk);
+
+        // (void)lock;  // suppress warning until code gets written
 }
 
 bool
@@ -200,9 +241,12 @@ lock_do_i_hold(struct lock *lock)
 {
         // Write this
 
-        (void)lock;  // suppress warning until code gets written
-
-        return true; // dummy until code gets written
+        KASSERT(lock != NULL);
+        
+        return lock->lk_owner == curthread;
+        
+        //(void)lock;  // suppress warning until code gets written
+        // return true; // dummy until code gets written
 }
 
 ////////////////////////////////////////////////////////////
