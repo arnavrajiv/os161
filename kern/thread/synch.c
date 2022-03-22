@@ -329,7 +329,7 @@ cv_signal(struct cv *cv, struct lock *lock)
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
+	// Write thi s
 	// (void)cv;    // suppress warning until code gets written
 	// (void)lock;  // suppress warning until code gets written
 
