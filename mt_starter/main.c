@@ -104,23 +104,31 @@ int runCommand(char ** args)
   return 1;
 }
 
-void leggo(char ** args)
+void leggo(char ** args, int childStatus)
 {
-    pid_t p_pid = fork();
-    if (p_pid == 0) {
-    int status = execvp(args[0], args);
-    if (status == -1) {
-      write(STDERR_FILENO, error_message, strlen(error_message));
-      }
+  pid_t p_pid = fork();
+   if (p_pid == 0) {
+     int status = execvp(args[0], args);
+     if (status == -1) {
+       write(STDERR_FILENO, error_message, strlen(error_message));
+     }
+     exit(0);
+   }
+
+   else if (p_pid == -1) {
+     write(STDERR_FILENO, error_message, strlen(error_message));
+     return;
+   }
+
+   else {
+     if(childStatus == 0) {
+     wait(NULL);
+     return;
     }
-    else if (p_pid == -1) {
-      write(STDERR_FILENO, error_message, strlen(error_message));
-      return;
-    }
-    else {
-      wait(NULL);
-      return;
-    }
+      else {
+        return;
+     }
+  }
 }
 
 int main( int argc, char ** argv )
@@ -165,11 +173,20 @@ int main( int argc, char ** argv )
         continue;
       }
       else {
-        leggo(splitCommand); // function to start process and leggo
+        // leggo(splitCommand, 0);
+        int length = 0;
+        while(splitCommand[length++]!=NULL)
+          ;
+        // leggo(splitCommand, 0);
+        if(strcmp(splitCommand[length-2], "&") != 0) {
+          leggo(splitCommand, 0);
+        }
+        else {
+          splitCommand[length-2] = '\0';
+          leggo(splitCommand, 1);
+
+        }
       }
-
-
-
   } while(1);
     return 0;
 }
