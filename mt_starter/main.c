@@ -31,7 +31,7 @@ int runCommand(char ** args)
   //printf("%d\n", commandNumber);
   switch(commandNumber) {
     // command cd
-    char * cwd;
+    char cwd[512];
     case 0:
       if(args[1] == NULL) {
         char * homeDirectory;
@@ -53,8 +53,14 @@ int runCommand(char ** args)
 
     // command pwd
     case 1:
-      cwd = malloc(sizeof(char) * 1024);
-      printf("%s \n", getcwd(cwd, 1024));
+      getcwd(cwd, sizeof(cwd));
+      char *cwdNew = malloc(strlen(cwd) + 2);
+      char n = '\n';
+      strcpy(cwdNew, cwd);
+      cwdNew[strlen(cwd)] = n;
+      cwdNew[strlen(cwd) + 1] = '\0';
+      write(STDOUT_FILENO, cwdNew, strlen(cwdNew));
+      free(cwdNew);
       return 1;
       break;
 
