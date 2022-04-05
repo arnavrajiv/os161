@@ -32,6 +32,9 @@ int runCommand(char ** args)
   switch(commandNumber) {
     // command cd
     char cwd[512];
+    char * helpString;
+    char n;
+
     case 0:
       if(args[1] == NULL) {
         char * homeDirectory;
@@ -55,7 +58,7 @@ int runCommand(char ** args)
     case 1:
       getcwd(cwd, sizeof(cwd));
       char *cwdNew = malloc(strlen(cwd) + 2);
-      char n = '\n';
+      n = '\n';
       strcpy(cwdNew, cwd);
       cwdNew[strlen(cwd)] = n;
       cwdNew[strlen(cwd) + 1] = '\0';
@@ -77,9 +80,20 @@ int runCommand(char ** args)
 
     // command help
     case 4:
-      printf("cd \npwd \nwait \nexit \nhelp\n");
+      helpString = malloc(sizeof(char)* 512);
+      helpString = "cd \npwd \nwait \nexit \nhelp";
+      char * helpNew = malloc(strlen(helpString) + 2);
+      n = '\n';
+      strcpy(helpNew, helpString);
+      helpNew[strlen(helpString)] = n;
+      helpNew[strlen(helpString) + 1] = '\0';
+      write(STDOUT_FILENO, helpNew, strlen(helpNew));
+      free(helpNew);
       return 1;
       break;
+      // printf("cd \npwd \nwait \nexit \nhelp\n");
+      // return 1;
+      // break;
 
     default:
       return 0;
