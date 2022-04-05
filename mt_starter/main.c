@@ -136,57 +136,111 @@ int main( int argc, char ** argv )
 
   char *command; // to take the input command
 
-  do {
-      // printing initial shell prompt
-      printf("> ");
+  if (argc == 2) {
+    FILE *file;
+    char *fileName = argv[1];
+    file = fopen(fileName, "r");
+    // handling null file
+    if (file == NULL) {
+      write(STDERR_FILENO, error_message, strlen(error_message));
+      return 0;
+    }
 
-      // command input
-      command = (char *)malloc(sizeof(char) * 512); // assigning the pointer to a block of memory of max size 512
-      int i = 0; // index for command array
-      char input = getchar(); // taking in input character by character to check for command termination
-      while(input != '\n') {
-        command[i++] = input; // storing each character in the command anc incrementing it
-        input = getchar();
-      }
+    command = (char *)malloc(sizeof(char) * 1024);
+    while (fscanf(file, "%[^\n] ", command) != EOF) {
 
-      if( strcmp(command, "") == 0) {
-        continue; // if it is an empty string then go to the next iteration of do ... while loop
-      }
+        // processing the command
+        char ** splitCommand = malloc(sizeof(char *) * 64);
+        int i = 0;
+        char limit[2] = " ";
+        char * splitWord = strtok(command, limit);
+        while (splitWord != NULL){
+          splitCommand[i++] = splitWord;
+          splitWord = strtok(NULL, limit);
+        }
+        splitCommand[i] = NULL;
 
-      // processing the command
-      char ** splitCommand = malloc(sizeof(char *) * 64);
-      i = 0;
-      char limit[2] = " ";
-      char * splitWord = strtok(command, limit);
-      while (splitWord != NULL){
-        splitCommand[i++] = splitWord;
-        splitWord = strtok(NULL, limit);
-      }
-      splitCommand[i] = NULL;
+        // printf("%s\n", splitCommand[0]);
 
-      // executing the command
-      if (splitCommand[0] == NULL) {
-        continue;
-      }
+        // executing the command
+        if (splitCommand[0] == NULL) {
+          continue;
+        }
 
-      if(runCommand(splitCommand)) {
-        continue;
-      }
-      else {
-        // leggo(splitCommand, 0);
-        int length = 0;
-        while(splitCommand[length++]!=NULL)
-          ;
-        // leggo(splitCommand, 0);
-        if(strcmp(splitCommand[length-2], "&") != 0) {
-          leggo(splitCommand, 0);
+        if(runCommand(splitCommand)) {
+          continue;
         }
         else {
-          splitCommand[length-2] = '\0';
-          leggo(splitCommand, 1);
+          // leggo(splitCommand, 0);
+          int length = 0;
+          while(splitCommand[length++]!=NULL)
+            ;
+          // leggo(splitCommand, 0);
+          if(strcmp(splitCommand[length-2], "&") != 0) {
+            leggo(splitCommand, 0);
+          }
+          else {
+            splitCommand[length-2] = '\0';
+            leggo(splitCommand, 1);
 
+          }
         }
       }
-  } while(1);
+  }
+  else {
+
+    do {
+        // printing initial shell prompt
+        printf("> ");
+
+        // command input
+        command = (char *)malloc(sizeof(char) * 512); // assigning the pointer to a block of memory of max size 512
+        int i = 0; // index for command array
+        char input = getchar(); // taking in input character by character to check for command termination
+        while(input != '\n') {
+          command[i++] = input; // storing each character in the command anc incrementing it
+          input = getchar();
+        }
+
+        if( strcmp(command, "") == 0) {
+          continue; // if it is an empty string then go to the next iteration of do ... while loop
+        }
+
+        // processing the command
+        char ** splitCommand = malloc(sizeof(char *) * 64);
+        i = 0;
+        char limit[2] = " ";
+        char * splitWord = strtok(command, limit);
+        while (splitWord != NULL){
+          splitCommand[i++] = splitWord;
+          splitWord = strtok(NULL, limit);
+        }
+        splitCommand[i] = NULL;
+
+        // executing the command
+        if (splitCommand[0] == NULL) {
+          continue;
+        }
+
+        if(runCommand(splitCommand)) {
+          continue;
+        }
+        else {
+          // leggo(splitCommand, 0);
+          int length = 0;
+          while(splitCommand[length++]!=NULL)
+            ;
+          // leggo(splitCommand, 0);
+          if(strcmp(splitCommand[length-2], "&") != 0) {
+            leggo(splitCommand, 0);
+          }
+          else {
+            splitCommand[length-2] = '\0';
+            leggo(splitCommand, 1);
+
+          }
+        }
+      } while(1);
     return 0;
+  }
 }
