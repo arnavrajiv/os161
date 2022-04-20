@@ -141,14 +141,63 @@ void free_fs(FileSystem *fs)
 bool fs_mount(FileSystem *fs, Disk *disk)
 {
     // Read superblock
+    Block inodeBlock;
+    disk_read(disk, 0, inodeBlock.Data);
+    uint32_t num_blocks = inodeBlock.Super.Blocks;
+    uint32_t num_inodeBlocks = inodeBlock.Super.InodeBlocks;
+    uint32_t num_inodes = inodeBlock.Super.Inodes;
+    if (inodeBlock.Super.MagicNumber != MAGIC_NUMBER) return false;
+    if (disk_mounted(disk)) return false;
+    if (num_inodeBlocks != (num_blocks + 9) / 10) return false;
+    if (num_inodes != num_inodeBlocks * INODES_PER_BLOCK) return false;
 
-    // Set device and mount
+    int *bit_map = malloc(sizeof(int)*inodeBlock.Super.Blocks);
+  	bit_map[0] = 1;
+  	for(int i = 1; i <= num_inodeBlocks ; i++) {
+      if (i <= num_inodeBlocks) bit_map[i] = 1;
+      else bit_map[i] = 0;
 
-    // Copy metadata
+      disk_read(disk, i, inodeBlock.Data);
+  		for (int j = 0; j < INODES_PER_BLOCK; j++) {
+  			if (!inodeBlock.Inodes[j].Valid) continue;
+  			if (inodeBlock.Inodes[j].Indirect) {
+          bit_map[inodeBlock.Inodes[j].Indirect] = 1;
+        }
+  			for (int k = 0; k < POINTERS_PER_INODE; k++) {
+  				if(inodeBlock.Inodes[j].Direct[k]) {
+            bit_map[inodeBlock.Inodes[j].Direct[k]] = 1;
+          }
+  			}
+  		}
+    }
+    /*
+  	for (int i = 1; i <= num_inodeBlocks; i++) {
+      disk_read(disk, i, inodeBlock.Data);
+  		for (int j = 0; j < INODES_PER_BLOCK; j++) {
+  			if (!inodeBlock.Inodes[j].Valid) continue;
+  			if (inodeBlock.Inodes[j].Indirect) {
+          bit_map[inodeBlock.Inodes[j].Indirect] = 1;
+        }
+  			for (int k = 0; k < POINTERS_PER_INODE; k++) {
+  				if(inodeBlock.Inodes[j].Direct[k]) {
+            bit_map[inodeBlock.Inodes[j].Direct[k]] = 1;
+          }
+  			}
+  		}
+  	}
+    */
+    for(int i = num_inodeBlocks + 1; i < num_blocks; i++) {
+  		disk_read(disk, i, inodeBlock.Data);
+  		for(int j = 0; j < POINTERS_PER_BLOCK; j++) {
+  			inodeBlock.Pointers[j] = 0;
+  		}
 
-    // Allocate free block bitmap
+  	}
+    disk_mount(disk);
+  	return true;
 
-    return false;
+
+
 }
 
 // Create inode ----------------------------------------------------------------
