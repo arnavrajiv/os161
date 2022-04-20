@@ -171,28 +171,13 @@ bool fs_mount(FileSystem *fs, Disk *disk)
   		}
     }
     /*
-  	for (int i = 1; i <= num_inodeBlocks; i++) {
-      disk_read(disk, i, inodeBlock.Data);
-  		for (int j = 0; j < INODES_PER_BLOCK; j++) {
-  			if (!inodeBlock.Inodes[j].Valid) continue;
-  			if (inodeBlock.Inodes[j].Indirect) {
-          bit_map[inodeBlock.Inodes[j].Indirect] = 1;
-        }
-  			for (int k = 0; k < POINTERS_PER_INODE; k++) {
-  				if(inodeBlock.Inodes[j].Direct[k]) {
-            bit_map[inodeBlock.Inodes[j].Direct[k]] = 1;
-          }
-  			}
-  		}
-  	}
-    */
     for(int i = num_inodeBlocks + 1; i < num_blocks; i++) {
   		disk_read(disk, i, inodeBlock.Data);
   		for(int j = 0; j < POINTERS_PER_BLOCK; j++) {
   			inodeBlock.Pointers[j] = 0;
   		}
-
   	}
+    */
     disk_mount(disk);
   	return true;
 
