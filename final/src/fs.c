@@ -63,21 +63,21 @@ void fs_debug(Disk *disk)
             if (inodeBlock.Inodes[j].Valid == 1) {
                 printf("Inode %d:\n", j + i * num_inodeBlocks);
                 printf("    size: %d bytes\n", inodeBlock.Inodes[j].Size);
-                printf("    direct blocks: ");
+                printf("    direct blocks:");
 
                 for (int k = 0; k < POINTERS_PER_INODE; k++) {
             				if (inodeBlock.Inodes[j].Direct[k]) {
-                      printf("%d ", inodeBlock.Inodes[j].Direct[k]);
+                      printf(" %d", inodeBlock.Inodes[j].Direct[k]);
                     }
             		}
                 printf("\n");
                 if (inodeBlock.Inodes[j].Indirect) {
                   printf("    indirect block: %d\n", inodeBlock.Inodes[j].Indirect);
-                	printf("    indirect data blocks: ");
+                	printf("    indirect data blocks:");
                 	disk_read(disk, inodeBlock.Inodes[j].Indirect, indirectInodeBlock.Data);
                 	for(int k = 0; k < POINTERS_PER_BLOCK; k++) {
                 	   if(indirectInodeBlock.Pointers[k] > 0 && indirectInodeBlock.Pointers[k] < num_blocks) {
-                		     printf("%d ", indirectInodeBlock.Pointers[k]);
+                		     printf(" %d ", indirectInodeBlock.Pointers[k]);
                 			}
                 	}
                 	printf("\n");
