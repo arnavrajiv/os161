@@ -77,7 +77,7 @@ void fs_debug(Disk *disk)
                 	disk_read(disk, inodeBlock.Inodes[j].Indirect, indirectInodeBlock.Data);
                 	for(int k = 0; k < POINTERS_PER_BLOCK; k++) {
                 	   if(indirectInodeBlock.Pointers[k] > 0 && indirectInodeBlock.Pointers[k] < num_blocks) {
-                		     printf(" %d ", indirectInodeBlock.Pointers[k]);
+                		     printf(" %d", indirectInodeBlock.Pointers[k]);
                 			}
                 	}
                 	printf("\n");
