@@ -92,10 +92,32 @@ void fs_debug(Disk *disk)
 
 bool fs_format(Disk *disk)
 {
-    // Write superblock
+    if(!disk_mounted(disk)) {
+        // Write superblock
+        int num_blocks = disk_size(disk);
+      	int num_inodeBlocks = (num_blocks + 9) / 10;
 
-    // Clear all other blocks
+      	Block inodeBlock;
+      	inodeBlock.Super.MagicNumber = MAGIC_NUMBER;
+      	inodeBlock.Super.Blocks = num_blocks;
+      	inodeBlock.Super.InodeBlocks = num_inodeBlocks;
+      	inodeBlock.Super.Inodes = num_inodeBlocks * INODES_PER_BLOCK;
+      	disk_write(disk, 0, inodeBlock.Data);
 
+        // Clear all other blocks
+      	for (int i = 1; i <= num_inodeBlocks; i++) {
+      		for (int j = 0; j < INODES_PER_BLOCK; j++) {
+      			inodeBlock.Inodes[j].Valid = 0;
+      			inodeBlock.Inodes[j].Size = 0;
+      			for(int k = 0; k < POINTERS_PER_INODE; k++) {
+              inodeBlock.Inodes[j].Direct[k] = 0;
+            }
+            inodeBlock.Inodes[j].Indirect = 0;
+      		}
+      		disk_write(disk, i, inodeBlock.Data);
+      	}
+      	return true;
+    }
     return false;
 }
 
