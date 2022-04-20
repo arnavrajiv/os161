@@ -1,246 +1,207 @@
-/* main.c
- * ----------------------------------------------------------
- *  CS350
- *  Midterm Programming Assignment
- *
- *  Purpose:  - Use Linux programming environment.
- *            - Review process creation and management
- * ----------------------------------------------------------
- */
- #include <stdio.h>
- #include <string.h>
- #include <stdlib.h>
- #include <unistd.h>
- #include <sys/wait.h>
- #include <fcntl.h>
+#include "disk.h"
+#include "fs.h"
 
-char error_message[30] = "An error has occurred\n";
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
-int runCommand(char ** args)
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+
+#ifdef DEBUG
+#define DEBUG_PRINT(fmt, args...)    fprintf(stderr, fmt, ## args)
+#else
+#define DEBUG_PRINT(fmt, args...)    /* Don't do anything in release builds */
+#endif
+
+// Debug file system -----------------------------------------------------------
+
+void fs_debug(Disk *disk)
 {
-  char * commandList[5] = { "cd", "pwd", "wait", "exit", "help"};
-  int commandNumber = -1;
-  char * userCommand = args[0];
-
-  for (int i = 0; i < 5; i++) {
-    if (strcmp(commandList[i], userCommand) == 0) {
-      commandNumber = i;
-      break;
-    }
-  }
-  //printf("%d\n", commandNumber);
-  switch(commandNumber) {
-    // command cd
-    char cwd[512];
-    char * helpString;
-    char n;
-
-    case 0:
-      if(args[1] == NULL) {
-        char * homeDirectory;
-        homeDirectory = getenv("HOME");
-        chdir(homeDirectory);
-        int status = chdir(homeDirectory);
-        if (status == -1) {
-          write(STDERR_FILENO, error_message, strlen(error_message));
-        }
-      }
-      else {
-        int status = chdir(args[1]);
-        if (status == -1) {
-          write(STDERR_FILENO, error_message, strlen(error_message));
-        }
-      }
-      return 1;
-      break;
-
-    // command pwd
-    case 1:
-      getcwd(cwd, sizeof(cwd));
-      char *cwdNew = malloc(strlen(cwd) + 2);
-      n = '\n';
-      strcpy(cwdNew, cwd);
-      cwdNew[strlen(cwd)] = n;
-      cwdNew[strlen(cwd) + 1] = '\0';
-      write(STDOUT_FILENO, cwdNew, strlen(cwdNew));
-      free(cwdNew);
-      return 1;
-      break;
-
-    // command wait
-    case 2:
-      while(wait(NULL) != -1) {}
-      return 1;
-      break;
-
-    // command exit
-    case 3:
-      exit(0);
-      break;
-
-    // command help
-    case 4:
-      helpString = malloc(sizeof(char)* 512);
-      helpString = "cd \npwd \nwait \nexit \nhelp";
-      char * helpNew = malloc(strlen(helpString) + 2);
-      n = '\n';
-      strcpy(helpNew, helpString);
-      helpNew[strlen(helpString)] = n;
-      helpNew[strlen(helpString) + 1] = '\0';
-      write(STDOUT_FILENO, helpNew, strlen(helpNew));
-      free(helpNew);
-      return 1;
-      break;
-      // printf("cd \npwd \nwait \nexit \nhelp\n");
-      // return 1;
-      // break;
-
-    default:
-      return 0;
-      break;
-  }
-
-
-  return 1;
-}
-
-void leggo(char ** args, int childStatus)
-{
-  pid_t p_pid = fork();
-   if (p_pid == 0) {
-     int status = execvp(args[0], args);
-     if (status == -1) {
-       write(STDERR_FILENO, error_message, strlen(error_message));
-     }
-     exit(0);
-   }
-
-   else if (p_pid == -1) {
-     write(STDERR_FILENO, error_message, strlen(error_message));
-     return;
-   }
-
-   else {
-     if(childStatus == 0) {
-     wait(NULL);
-     return;
-    }
-      else {
+    if (disk == 0)
         return;
-     }
-  }
-}
 
-int main( int argc, char ** argv )
-{
+    Block block;
 
-  char *command; // to take the input command
+    // Read Superblock
+    disk_read(disk, 0, block.Data);
 
-  if (argc == 2) {
-    FILE *file;
-    char *fileName = argv[1];
-    file = fopen(fileName, "r");
-    // handling null file
-    if (file == NULL) {
-      write(STDERR_FILENO, error_message, strlen(error_message));
-      return 0;
+    uint32_t magic_num = block.Super.MagicNumber;
+    uint32_t num_blocks = block.Super.Blocks;
+    uint32_t num_inodeBlocks = block.Super.InodeBlocks;
+    uint32_t num_inodes = block.Super.Inodes;
+
+    if (magic_num != MAGIC_NUMBER)
+    {
+        printf("Magic number is valid: %c\n", magic_num);
+        return;
     }
 
-    command = (char *)malloc(sizeof(char) * 1024);
-    while (fscanf(file, "%[^\n] ", command) != EOF) {
+    printf("SuperBlock:\n");
+    printf("    magic number is valid\n");
+    printf("    %u blocks\n", num_blocks);
+    printf("    %u inode blocks\n", num_inodeBlocks);
+    printf("    %u inodes\n", num_inodes);
 
-        // processing the command
-        char ** splitCommand = malloc(sizeof(char *) * 64);
-        int i = 0;
-        char limit[2] = " ";
-        char * splitWord = strtok(command, limit);
-        while (splitWord != NULL){
-          splitCommand[i++] = splitWord;
-          splitWord = strtok(NULL, limit);
+    uint32_t expected_num_inodeBlocks = round((float)num_blocks / 10);
+
+    if (expected_num_inodeBlocks != num_inodeBlocks)
+    {
+        printf("SuperBlock declairs %u InodeBlocks but expect %u InodeBlocks!\n", num_inodeBlocks, expected_num_inodeBlocks);
+    }
+
+    uint32_t expect_num_inodes = num_inodeBlocks * INODES_PER_BLOCK;
+    if (expect_num_inodes != num_inodes)
+    {
+        printf("SuperBlock declairs %u Inodes but expect %u Inodes!\n", num_inodes, expect_num_inodes);
+    }
+
+    // FIXME: Read Inode blocks
+    Block inodeBlock, indirectInodeBlock;
+    for (int i = 0; i < num_inodeBlocks; i++) {
+        disk_read(disk, i+1, inodeBlock.Data);
+        for (int j = 0; j < INODES_PER_BLOCK; j++) {
+            if (inodeBlock.Inodes[j].Valid == 1) {
+                printf("Inode %d:\n", j + i * num_inodeBlocks);
+                printf("    size: %d bytes\n", inodeBlock.Inodes[j].Size);
+                printf("    direct blocks:");
+
+                for (int k = 0; k < POINTERS_PER_INODE; k++) {
+            				if (inodeBlock.Inodes[j].Direct[k]) {
+                      printf(" %d", inodeBlock.Inodes[j].Direct[k]);
+                    }
+            		}
+                printf("\n");
+                if (inodeBlock.Inodes[j].Indirect) {
+                  printf("    indirect block: %d\n", inodeBlock.Inodes[j].Indirect);
+                	printf("    indirect data blocks:");
+                	disk_read(disk, inodeBlock.Inodes[j].Indirect, indirectInodeBlock.Data);
+                	for(int k = 0; k < POINTERS_PER_BLOCK; k++) {
+                	   if(indirectInodeBlock.Pointers[k] > 0 && indirectInodeBlock.Pointers[k] < num_blocks) {
+                		     printf(" %d ", indirectInodeBlock.Pointers[k]);
+                			}
+                	}
+                	printf("\n");
+              	}
+            }
         }
-        splitCommand[i] = NULL;
+    }
+}
 
-        // printf("%s\n", splitCommand[0]);
 
-        // executing the command
-        if (splitCommand[0] == NULL) {
-          continue;
-        }
+// Format file system ----------------------------------------------------------
 
-        if(runCommand(splitCommand)) {
-          continue;
-        }
-        else {
-          // leggo(splitCommand, 0);
-          int length = 0;
-          while(splitCommand[length++]!=NULL)
-            ;
-          // leggo(splitCommand, 0);
-          if(strcmp(splitCommand[length-2], "&") != 0) {
-            leggo(splitCommand, 0);
-          }
-          else {
-            splitCommand[length-2] = '\0';
-            leggo(splitCommand, 1);
+bool fs_format(Disk *disk)
+{
+    // Write superblock
 
-          }
-        }
-      }
-  }
-  else {
+    // Clear all other blocks
 
-    do {
-        // printing initial shell prompt
-        printf("> ");
+    return false;
+}
 
-        // command input
-        command = (char *)malloc(sizeof(char) * 512); // assigning the pointer to a block of memory of max size 512
-        int i = 0; // index for command array
-        char input = getchar(); // taking in input character by character to check for command termination
-        while(input != '\n') {
-          command[i++] = input; // storing each character in the command anc incrementing it
-          input = getchar();
-        }
+// FileSystem constructor
+FileSystem *new_fs()
+{
+    FileSystem *fs = malloc(sizeof(FileSystem));
+    return fs;
+}
 
-        if( strcmp(command, "") == 0) {
-          continue; // if it is an empty string then go to the next iteration of do ... while loop
-        }
+// FileSystem destructor
+void free_fs(FileSystem *fs)
+{
+    // FIXME: free resources and allocated memory in FileSystem
 
-        // processing the command
-        char ** splitCommand = malloc(sizeof(char *) * 64);
-        i = 0;
-        char limit[2] = " ";
-        char * splitWord = strtok(command, limit);
-        while (splitWord != NULL){
-          splitCommand[i++] = splitWord;
-          splitWord = strtok(NULL, limit);
-        }
-        splitCommand[i] = NULL;
+    free(fs);
+}
 
-        // executing the command
-        if (splitCommand[0] == NULL) {
-          continue;
-        }
+// Mount file system -----------------------------------------------------------
 
-        if(runCommand(splitCommand)) {
-          continue;
-        }
-        else {
-          // leggo(splitCommand, 0);
-          int length = 0;
-          while(splitCommand[length++]!=NULL)
-            ;
-          // leggo(splitCommand, 0);
-          if(strcmp(splitCommand[length-2], "&") != 0) {
-            leggo(splitCommand, 0);
-          }
-          else {
-            splitCommand[length-2] = '\0';
-            leggo(splitCommand, 1);
+bool fs_mount(FileSystem *fs, Disk *disk)
+{
+    // Read superblock
 
-          }
-        }
-      } while(1);
+    // Set device and mount
+
+    // Copy metadata
+
+    // Allocate free block bitmap
+
+    return false;
+}
+
+// Create inode ----------------------------------------------------------------
+
+ssize_t fs_create(FileSystem *fs)
+{
+    // Locate free inode in inode table
+
+    // Record inode if found
+
+    return -1;
+}
+
+// Optional: the following two helper functions may be useful.
+
+// bool find_inode(FileSystem *fs, size_t inumber, Inode *inode)
+// {
+//     return true;
+// }
+
+// bool store_inode(FileSystem *fs, size_t inumber, Inode *inode)
+// {
+//     return true;
+// }
+
+// Remove inode ----------------------------------------------------------------
+
+bool fs_remove(FileSystem *fs, size_t inumber)
+{
+    // Load inode information
+
+    // Free direct blocks
+
+    // Free indirect blocks
+
+    // Clear inode in inode table
+
+    return false;
+}
+
+// Inode stat ------------------------------------------------------------------
+
+ssize_t fs_stat(FileSystem *fs, size_t inumber)
+{
+    // Load inode information
     return 0;
-  }
+}
+
+// Read from inode -------------------------------------------------------------
+
+ssize_t fs_read(FileSystem *fs, size_t inumber, char *data, size_t length, size_t offset)
+{
+    // Load inode information
+
+    // Adjust length
+
+    // Read block and copy to data
+
+    return 0;
+}
+
+// Optional: the following helper function may be useful.
+
+// ssize_t fs_allocate_block(FileSystem *fs)
+// {
+//     return -1;
+// }
+
+// Write to inode --------------------------------------------------------------
+
+ssize_t fs_write(FileSystem *fs, size_t inumber, char *data, size_t length, size_t offset)
+{
+    // Load inode
+
+    // Write block and copy to data
+
+    return 0;
 }
